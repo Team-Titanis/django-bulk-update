@@ -164,8 +164,11 @@ def bulk_update(objs, meta=None, update_fields=None, exclude_fields=None,
 
     # batch size is important in sqlite because of maximum number of parameters
     # Every object will need two params for each field. plus param for id
-    max_batch_size = connection.ops.bulk_batch_size(fields * 2 + ['id'], objs)
-    batch_size = min(batch_size, max(max_batch_size, 1)) 
+    if 'sqlite' in vendor:
+        max_batch_size = connection.ops.bulk_batch_size(fields * 2 + ['id'], objs)
+    else:
+        max_batch_size = batch_size
+    batch_size = min(batch_size, max(max_batch_size, 1))
 
     lenpks = 0
     for objs_batch in grouper(objs, batch_size):
