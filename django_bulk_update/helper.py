@@ -6,9 +6,10 @@ import itertools
 
 from collections import defaultdict
 
-from django.db import connections, models
+from django.db import connections, models, router
 from django.db.models.query import QuerySet
 from django.db.models.sql import UpdateQuery
+from django.db.utils import DEFAULT_DB_ALIAS
 
 
 def _get_db_type(field, connection):
@@ -114,7 +115,7 @@ def get_fields(update_fields, exclude_fields, meta, obj=None):
 
 
 def bulk_update(objs, meta=None, update_fields=None, exclude_fields=None,
-                using='default', batch_size=None, pk_field='pk'):
+                using=None, batch_size=None, pk_field='pk'):
     assert batch_size is None or batch_size > 0
 
     # force to retrieve objs from the DB at the beginning,
@@ -127,11 +128,14 @@ def bulk_update(objs, meta=None, update_fields=None, exclude_fields=None,
     if meta:
         fields = get_fields(update_fields, exclude_fields, meta)
     else:
-        meta = objs[0]._meta
+        first = objs[0]
+        meta = first._meta
         if update_fields is not None:
             fields = get_fields(update_fields, exclude_fields, meta, objs[0])
         else:
             fields = None
+        using = using or router.db_for_write(first.__class__, instance=first)
+    using = using or DEFAULT_DB_ALIAS
 
     if fields is not None and len(fields) == 0:
         return
